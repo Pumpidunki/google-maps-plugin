@@ -1,0 +1,37 @@
+{
+  "name": "google-maps",
+  "displayName": "Google Maps",
+  "version": "1.0.0",
+  "description": "Google Maps for Claude Code: search places, details and reviews, geocoding, routes with live traffic and public transport, distance matrix, and links that open in the Google Maps app.",
+  "author": {
+    "name": "Pumpidunki",
+    "url": "https://github.com/Pumpidunki"
+  },
+  "homepage": "https://github.com/Pumpidunki/google-maps-plugin",
+  "repository": "https://github.com/Pumpidunki/google-maps-plugin",
+  "license": "MIT",
+  "keywords": [
+    "google-maps",
+    "maps",
+    "places",
+    "routes",
+    "geocoding",
+    "mcp"
+  ],
+  "icon": "./.claude-plugin/icon.png",
+  "userConfig": {
+    "google_maps_api_key": {
+      "type": "string",
+      "title": "Google Maps API key",
+      "description": "Server key from console.cloud.google.com with Places API (New), Routes API and Geocoding API enabled",
+      "sensitive": true,
+      "required": true
+    },
+    "language": {
+      "type": "string",
+      "title": "Language",
+      "description": "Language code for results, e.g. es, en, fr",
+      "default": "es"
+    }
+  }
+}

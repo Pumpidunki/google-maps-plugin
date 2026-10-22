@@ -1,0 +1,15 @@
+{
+  "name": "google-maps-tools",
+  "description": "Google Maps connector for Claude Code",
+  "owner": {
+    "name": "Pumpidunki",
+    "url": "https://github.com/Pumpidunki"
+  },
+  "plugins": [
+    {
+      "name": "google-maps",
+      "source": "./plugins/google-maps",
+      "description": "Search places, routes with traffic, geocoding and Google Maps app links"
+    }
+  ]
+}
