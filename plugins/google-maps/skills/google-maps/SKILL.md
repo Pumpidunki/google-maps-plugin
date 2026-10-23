@@ -9,6 +9,7 @@ The `google-maps` MCP server of this plugin gives you these tools:
 
 - `search_places`: find businesses or landmarks by free text, optionally `near` an address or `lat,lng`. Filters: `open_now`, `min_rating`, `max_results`.
 - `place_details`: hours, phone, website, editorial summary and latest reviews for a `place_id`.
+- `place_photos`: up to 10 photos of a `place_id`, returned as images you can see, with each author. Pass `save_dir` to save them as files. Credit the author when the user reuses a photo.
 - `geocode`: address to coordinates, or `lat,lng` to address.
 - `directions`: route between two points, with live traffic when driving, public transport lines with `TRANSIT`, waypoints, avoid tolls/highways/ferries and alternatives. It returns `open_in_google_maps`.
 - `distance_matrix`: time and distance from several origins to several destinations, sorted by time.

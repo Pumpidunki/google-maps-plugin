@@ -1,8 +1,8 @@
 {
   "name": "google-maps",
   "displayName": "Google Maps",
-  "version": "1.0.0",
-  "description": "Google Maps for Claude Code: search places, details and reviews, geocoding, routes with live traffic and public transport, distance matrix, and links that open in the Google Maps app.",
+  "version": "1.1.0",
+  "description": "Google Maps for Claude Code: search places, details, reviews and photos, geocoding, routes with live traffic and public transport, distance matrix, and links that open in the Google Maps app.",
   "author": {
     "name": "Pumpidunki",
     "url": "https://github.com/Pumpidunki"

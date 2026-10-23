@@ -23,6 +23,7 @@ Solo necesita **Node.js 18 o superior**. No hay que ejecutar `npm install`.
 | --- | --- |
 | `search_places` | Buscar negocios o lugares, opcionalmente cerca de un punto |
 | `place_details` | Horarios, teléfono, web, valoración y últimas reseñas |
+| `place_photos` | Fotos del sitio (hasta 10) con su autor; Claude las ve y puede guardarlas en una carpeta |
 | `geocode` | Pasar de dirección a coordenadas y al revés |
 | `directions` | Ruta en coche (con tráfico), a pie, en bici, en moto o en transporte público, con enlace para abrirla en la app |
 | `distance_matrix` | Tiempos y distancias de varios orígenes a varios destinos |
@@ -40,6 +41,6 @@ claude mcp add google-maps -e GOOGLE_MAPS_API_KEY=TU_CLAVE -- node /ruta/google-
 
 ## English
 
-Google Maps plugin for Claude Code. It needs Node.js 18+ and a Google Maps Platform key with Places API (New), Routes API and Geocoding API enabled. Install it with `/plugin marketplace add Pumpidunki/google-maps-plugin`, then `/plugin install google-maps@google-maps-tools`. Claude Code prompts for the key and stores it in secure storage. The tools are the six listed above.
+Google Maps plugin for Claude Code. It needs Node.js 18+ and a Google Maps Platform key with Places API (New), Routes API and Geocoding API enabled. Install it with `/plugin marketplace add Pumpidunki/google-maps-plugin`, then `/plugin install google-maps@google-maps-tools`. Claude Code prompts for the key and stores it in secure storage. The tools are the seven listed above.
 
 Google bills usage to your own key; check [pricing](https://mapsplatform.google.com/pricing/).

@@ -2,9 +2,11 @@
 // Zero-dependency MCP server (stdio) for Google Maps Platform.
 // Requires Node 18+ and GOOGLE_MAPS_API_KEY with these APIs enabled:
 // Places API (New), Routes API and Geocoding API.
+import { mkdirSync, writeFileSync } from "node:fs";
+import { join } from "node:path";
 import { createInterface } from "node:readline";
 
-const VERSION = "1.0.0";
+const VERSION = "1.1.0";
 const LANG = process.env.GOOGLE_MAPS_LANGUAGE || "es";
 const NO_KEY =
   "Falta la clave GOOGLE_MAPS_API_KEY / Missing GOOGLE_MAPS_API_KEY. " +
@@ -47,8 +49,10 @@ async function googlePost(url, fieldMask, body) {
 }
 
 async function googleGet(url, fieldMask) {
+  const headers = { "X-Goog-Api-Key": apiKey() };
+  if (fieldMask) headers["X-Goog-FieldMask"] = fieldMask;
   const res = await fetch(url, {
-    headers: { "X-Goog-Api-Key": apiKey(), "X-Goog-FieldMask": fieldMask },
+    headers,
     signal: AbortSignal.timeout(15_000),
   });
   return readGoogle(res, new URL(url).pathname);
@@ -92,6 +96,17 @@ async function resolveLatLng(text) {
   if (!r) throw new Error(`No encuentro la ubicación "${text}" / Location not found`);
   return { latitude: r.geometry.location.lat, longitude: r.geometry.location.lng };
 }
+
+const placeIdOf = (text) => String(text).replace(/^place_id:/, "").replace(/^places\//, "");
+
+const slug = (text) =>
+  String(text)
+    .normalize("NFD")
+    .replace(/[̀-ͯ]/g, "")
+    .toLowerCase()
+    .replace(/[^a-z0-9]+/g, "-")
+    .replace(/^-|-$/g, "")
+    .slice(0, 60) || "place";
 
 const km = (m) => (m == null ? null : Math.round(m / 100) / 10);
 const minutes = (d) => (d ? Math.round(parseFloat(String(d).replace("s", "")) / 60) : null);
@@ -208,7 +223,7 @@ const TOOLS = [
       required: ["place_id"],
     },
     async run(a) {
-      const id = String(a.place_id).replace(/^place_id:/, "").replace(/^places\//, "");
+      const id = placeIdOf(a.place_id);
       const fields = [...PLACE_FIELDS, "regularOpeningHours.weekdayDescriptions", "editorialSummary", "reviews"];
       const p = await googleGet(
         `https://places.googleapis.com/v1/places/${encodeURIComponent(id)}?languageCode=${a.language ?? LANG}`,
@@ -225,6 +240,80 @@ const TOOLS = [
           text: r.text?.text ?? r.originalText?.text,
         })),
       };
+    },
+  },
+  {
+    name: "place_photos",
+    description:
+      "Photos of a place on Google Maps by place_id (up to 10). Returns the images so you can see them, " +
+      "each photo's author (Google requires showing this attribution), and saves them as image files when save_dir is given.",
+    returnsContent: true,
+    inputSchema: {
+      type: "object",
+      properties: {
+        place_id: { type: "string", description: "Place id from search_places" },
+        max_photos: { type: "integer", minimum: 1, maximum: 10, description: "Default 4" },
+        max_width_px: { type: "integer", minimum: 100, maximum: 4800, description: "Image width in pixels (default 800)" },
+        save_dir: { type: "string", description: "Optional absolute folder to save the photos into" },
+      },
+      required: ["place_id"],
+    },
+    async run(a) {
+      const place = await googleGet(
+        `https://places.googleapis.com/v1/places/${encodeURIComponent(placeIdOf(a.place_id))}?languageCode=${LANG}`,
+        "displayName,googleMapsUri,photos",
+      );
+      const name = place.displayName?.text ?? "place";
+      const width = a.max_width_px ?? 800;
+      const photos = await Promise.all(
+        (place.photos ?? []).slice(0, a.max_photos ?? 4).map(async (ph) => {
+          // skipHttpRedirect gives a short-lived googleusercontent URL, so the key never travels in a URL.
+          const { photoUri } = await googleGet(
+            `https://places.googleapis.com/v1/${ph.name}/media?maxWidthPx=${width}&skipHttpRedirect=true`,
+          );
+          const res = await fetch(photoUri, { signal: AbortSignal.timeout(20_000) });
+          if (!res.ok) throw new Error(`Google photo (${res.status})`);
+          const author = ph.authorAttributions?.[0];
+          return {
+            data: Buffer.from(await res.arrayBuffer()),
+            mimeType: res.headers.get("content-type")?.split(";")[0] || "image/jpeg",
+            author: author?.displayName,
+            author_url: author?.uri,
+            original_size: `${ph.widthPx}x${ph.heightPx}`,
+          };
+        }),
+      );
+
+      let files = [];
+      if (a.save_dir && photos.length) {
+        const dir = join(a.save_dir, slug(name));
+        mkdirSync(dir, { recursive: true });
+        files = photos.map((p, i) => {
+          const file = join(dir, `${slug(name)}-${i + 1}.${p.mimeType === "image/png" ? "png" : "jpg"}`);
+          writeFileSync(file, p.data);
+          return file;
+        });
+      }
+
+      const summary = {
+        place: name,
+        google_maps: place.googleMapsUri,
+        total_photos_on_google: place.photos?.length ?? 0,
+        photos: photos.map((p, i) => ({
+          n: i + 1,
+          author: p.author,
+          author_url: p.author_url,
+          original_size: p.original_size,
+          file: files[i],
+        })),
+        note: photos.length
+          ? "Las fotos son de sus autores; muestra su nombre al usarlas. / Photos belong to their authors; show the attribution."
+          : "Este sitio no tiene fotos en Google Maps. / This place has no photos.",
+      };
+      return [
+        { type: "text", text: JSON.stringify(summary, null, 2) },
+        ...photos.map((p) => ({ type: "image", data: p.data.toString("base64"), mimeType: p.mimeType })),
+      ];
     },
   },
   {
@@ -444,7 +533,7 @@ async function handle(msg) {
         capabilities: { tools: {} },
         serverInfo: { name: "google-maps", version: VERSION },
         instructions:
-          "Google Maps tools. Prefer search_places to find businesses, place_details for hours/phone/reviews, " +
+          "Google Maps tools. Prefer search_places to find businesses, place_details for hours/phone/reviews, place_photos for pictures, " +
           "directions for routes (it returns an open_in_google_maps link to share), distance_matrix to compare many places.",
       });
     case "ping":
@@ -466,7 +555,8 @@ async function handle(msg) {
       try {
         if (missing.length) throw new Error(`Faltan parámetros / Missing arguments: ${missing.join(", ")}`);
         const result = await tool.run(args);
-        return reply({ content: [{ type: "text", text: JSON.stringify(result, null, 2) }] });
+        const content = tool.returnsContent ? result : [{ type: "text", text: JSON.stringify(result, null, 2) }];
+        return reply({ content });
       } catch (err) {
         return reply({ isError: true, content: [{ type: "text", text: err instanceof Error ? err.message : String(err) }] });
       }
